@@ -12,7 +12,7 @@ st.set_page_config(layout="wide")
 try:
     locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 except:
-    locale.setlocale(locale.LC_ALL, 'Portuguese_Brazil.1252')
+    locale.setlocale(locale.LC_ALL, '')
 
 # Caminho para a planilha no formato original (colunas por unidade)
 xlsx_path = "C:/Users/Ayrton/OneDrive/01 - NASCIMENTO/CEAMAZON/ProjKpi/kpis_energia_por_unidade.xlsx"
