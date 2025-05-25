@@ -48,8 +48,8 @@ def format_real(valor):
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def format_num(valor, casas=2):
-    formato = f":,.{casas}f"
-    return f"{valor{formato}}".replace(",", "X").replace(".", ",").replace("X", ".")
+    formato = f",.{casas}f"
+    return f"{valor:{formato}}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 cores = {
     "Rodoviário": "#2563eb",  # Azul
