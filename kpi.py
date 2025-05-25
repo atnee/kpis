@@ -180,7 +180,7 @@ else:
 
     if modo == "Sistemas Analisados":
         st.markdown(
-            f"<h2 class='titulo' style='text-align:center; font-weight:bold;'>📊 FV - Analisados</h2>",
+            f"<h2 class='titulo' style='text-align:center; font-weight:bold;'>📊 Sistemas Fotovoltaicos - Analisados</h2>",
             unsafe_allow_html=True
         )
         unidade = st.selectbox("Selecione Unidade:", df_fv["Unidade"].unique())
@@ -205,7 +205,7 @@ else:
 
     else:
         st.markdown(
-            f"<h2 class='titulo' style='text-align:center; font-weight:bold;'>📈 FV - Geral</h2>",
+            f"<h2 class='titulo' style='text-align:center; font-weight:bold;'>📈 Sistemas Fotovoltaicos - Geral</h2>",
             unsafe_allow_html=True
         )
         mn = df_fv["Tempo"].min().to_pydatetime()
