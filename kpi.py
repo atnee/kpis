@@ -4,43 +4,46 @@ import plotly.express as px
 import plotly.graph_objects as go
 import locale
 import numpy as np
-import statsmodels  # necessário se for usar trendline="ols"
+import statsmodels  # necessário para trendline="ols"
 
 # 1) Configuração da página
 st.set_page_config(layout="wide")
 
-# 2) Injeção de CSS que aplica a classe 'titulo' conforme o tema nativo
-st.markdown('''
+# 2) Detecta tema nativo
+base    = (st.get_option("theme.base") or "light").lower()
+is_dark = base == "dark"
+plotly_template  = "plotly_dark" if is_dark else "plotly_white"
+annotation_color = "white"       if is_dark else "black"
+
+# 3) Mostra somente a logo correta usando st.image()
+if is_dark:
+    st.sidebar.image("logo-ceamazon-branca.png", use_container_width=True)
+else:
+    st.sidebar.image("logo-ceamazon-preta.png", use_container_width=True)
+
+# 4) Injeção de CSS para títulos adaptáveis
+st.markdown("""
 <style>
-  /* Dark mode */
-  html[data-theme="dark"] .titulo { color: white !important; }
-  /* Light mode */
+  html[data-theme="dark"]  .titulo { color: white !important; }
   html[data-theme="light"] .titulo { color: black !important; }
 </style>
-''', unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# 3) Detecta tema para gráficos e anotações
-base = (st.get_option("theme.base") or "light").lower()
-is_dark = base == "dark"
-plotly_template  = "plotly_dark"   if is_dark else "plotly_white"
-annotation_color = "white"         if is_dark else "black"
-
-# 4) Locale pt_BR
+# 5) Locale pt_BR
 try:
     locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 except:
     locale.setlocale(locale.LC_ALL, '')
 
-# 5) Helpers de formatação
+# 6) Helpers de formatação
 def format_real(v):
     return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def format_num(v, casas=2):
-    fmt = f",.{casas}f"
-    s = f"{v:{fmt}}"
+    s = f"{v:,.{casas}f}"
     return s.replace(",", "X").replace(".", ",").replace("X", ".")
 
-# 6) Caminho do Excel
+# 7) Carregamento de dados
 xlsx_path = "kpis_energia_por_unidade.xlsx"
 
 @st.cache_data
@@ -60,8 +63,7 @@ def carregar_dados_fotovoltaico():
     dfm = df.melt(
         id_vars=["Tempo", col_tar, col_gee],
         value_vars=cols_gen,
-        var_name="Unidade",
-        value_name="Geração (kWh)"
+        var_name="Unidade", value_name="Geração (kWh)"
     )
     dfm["Tempo"] = pd.to_datetime(dfm["Tempo"])
     dfm["Ano"]   = dfm["Tempo"].dt.year
@@ -74,20 +76,19 @@ def carregar_dados_fotovoltaico():
     dfm.rename(columns={col_tar: "Tarifa (R$/kWh)"}, inplace=True)
     return dfm
 
-# 7) Cores e ícones
+# 8) Cores e ícones
 cores = {"Rodoviário": "#2563eb", "Urbano": "#059669"}
-icons= {"Rodoviário": "🚌 Ônibus Rodoviário", "Urbano": "🚍 Ônibus Urbano"}
+icons = {"Rodoviário": "🚌 Ônibus Rodoviário", "Urbano": "🚍 Ônibus Urbano"}
 
-# 8) Sidebar de navegação
+# 9) Navegação
 relatorio = st.sidebar.radio("Selecione Relatório:", ["Mobilidade Elétrica", "Sistemas Fotovoltaicos"])
 
 if relatorio == "Mobilidade Elétrica":
-    linha = st.sidebar.radio("Linha de Ônibus:", ["Rodoviário", "Urbano"])
+    linha     = st.sidebar.radio("Ônibus Elétrico:", ["Rodoviário", "Urbano"])
     df_onibus = carregar_dados_onibus(linha)
-    cor_tema   = cores[linha]
-    emoji      = icons[linha]
+    cor_tema  = cores[linha]
+    emoji     = icons[linha]
 
-    # Títulos
     st.markdown(
         f"<h2 class='titulo' style='text-align:center; font-weight:bold;'>{emoji} — Mobilidade Elétrica</h2>",
         unsafe_allow_html=True
@@ -117,7 +118,7 @@ if relatorio == "Mobilidade Elétrica":
     with cb:
         cb.metric("Gasto em Diesel (R$)", format_real(df_onibus["Gasto em Diesel"].sum()))
         if df_onibus["Percentual de Redução"].notnull().any():
-            p = df_onibus["Percentual de Redução"].dropna().mean()
+            p   = df_onibus["Percentual de Redução"].dropna().mean()
             txt = f"{p*100:.2f}%" if p <= 1 else f"{p:.2f}%"
             cb.metric("Redução de GEE (%)", txt.replace(".", ","))
         else:
@@ -127,13 +128,13 @@ if relatorio == "Mobilidade Elétrica":
 
     # Gráficos Mensais
     st.markdown(
-        f"<h4 class='titulo' style='text-align:center; font-weight:bold;'>Gráficos Mensais</h4>",
+        "<h4 class='titulo' style='text-align:center; font-weight:bold;'>Gráficos Mensais</h4>",
         unsafe_allow_html=True
     )
-    for col, ttl in [("kWh", "Consumo"), ("km", "Distância"), ("Economia", "Economia")]:
+    for campo, titulo in [("kWh", "Consumo"), ("km", "Distância"), ("Economia", "Economia")]:
         fig = px.bar(
-            df_onibus, x="Mês", y=col,
-            title=f"{ttl} Mensal",
+            df_onibus, x="Mês", y=campo,
+            title=f"{titulo} Mensal",
             color_discrete_sequence=[cor_tema],
             template=plotly_template
         )
@@ -141,50 +142,46 @@ if relatorio == "Mobilidade Elétrica":
 
     st.divider()
 
-    # Correlação com trendline e anotação
+    # Correlação
     st.markdown(
-        f"<h4 class='titulo' style='text-align:center; font-weight:bold;'>Correlação Consumo vs Distância</h4>",
+        "<h4 class='titulo' style='text-align:center; font-weight:bold;'>Correlação Consumo vs Distância</h4>",
         unsafe_allow_html=True
     )
     df_corr = df_onibus.dropna(subset=["kWh", "km"])
     if not df_corr.empty:
-        corr = df_corr["km"].corr(df_corr["kWh"])
+        corr      = df_corr["km"].corr(df_corr["kWh"])
         corr_text = f"Coef. correlação: {corr:.2f}"
-
-        fig_corr = px.scatter(
+        fig_corr  = px.scatter(
             df_corr, x="km", y="kWh",
-            labels={"km": "Distância (km)", "kWh": "Consumo (kWh)"},
+            labels={"km":"Distância (km)", "kWh":"Consumo (kWh)"},
             color_discrete_sequence=[cor_tema],
             template=plotly_template,
             trendline="ols",
             trendline_color_override=cor_tema
         )
-
         fig_corr.add_annotation(
             text=corr_text,
-            xref="paper", yref="paper",
-            x=0.05, y=0.95,
+            xref="paper", yref="paper", x=0.05, y=0.95,
             showarrow=False,
             font=dict(color=annotation_color, size=14),
             align="left",
             bgcolor=("rgba(0,0,0,0.7)" if is_dark else "rgba(255,255,255,0.7)")
         )
-
         st.plotly_chart(fig_corr, use_container_width=True)
     else:
         st.info("Não há dados suficientes para plotar a correlação.")
 
 else:
-    modo = st.sidebar.radio("Modo FV:", ["Sistemas Analisados", "Geral"])
+    modo = st.sidebar.radio("Sistemas Fotovoltaicos:", ["Sistemas Analisados", "Geral"])
     df_fv = carregar_dados_fotovoltaico()
 
     if modo == "Sistemas Analisados":
         st.markdown(
-            f"<h2 class='titulo' style='text-align:center; font-weight:bold;'>📊 Sistemas Fotovoltaicos - Analisados</h2>",
+            "<h2 class='titulo' style='text-align:center; font-weight:bold;'>📊 Sistemas Fotovoltaicos – Analisados</h2>",
             unsafe_allow_html=True
         )
         unidade = st.selectbox("Selecione Unidade:", df_fv["Unidade"].unique())
-        df_uni = df_fv[df_fv["Unidade"] == unidade]
+        df_uni  = df_fv[df_fv["Unidade"] == unidade]
 
         c1, c2 = st.columns(2)
         c1.metric("Geração (kWh)", format_num(df_uni["Geração (kWh)"].sum(), 0))
@@ -196,7 +193,7 @@ else:
         st.divider()
 
         st.markdown(
-            f"<h4 class='titulo' style='text-align:center; font-weight:bold;'>Gráficos Mensais</h4>",
+            "<h4 class='titulo' style='text-align:center; font-weight:bold;'>Gráficos Mensais</h4>",
             unsafe_allow_html=True
         )
         st.plotly_chart(px.line(df_uni, x="Tempo", y="Geração (kWh)", template=plotly_template), use_container_width=True)
@@ -205,7 +202,7 @@ else:
 
     else:
         st.markdown(
-            f"<h2 class='titulo' style='text-align:center; font-weight:bold;'>📈 Sistemas Fotovoltaicos - Geral</h2>",
+            "<h2 class='titulo' style='text-align:center; font-weight:bold;'>📈 Sistemas Fotovoltaicos – Geral</h2>",
             unsafe_allow_html=True
         )
         mn = df_fv["Tempo"].min().to_pydatetime()
@@ -224,16 +221,16 @@ else:
         st.divider()
 
         st.markdown(
-            f"<h4 class='titulo' style='text-align:center; font-weight:bold;'>Gráficos Consolidados</h4>",
+            "<h4 class='titulo' style='text-align:center; font-weight:bold;'>Gráficos Consolidados</h4>",
             unsafe_allow_html=True
         )
         indicadores = {
-            "Geração (kWh)": ("Geração", "red"),
-            "Receita (R$)": ("Receita", "green"),
-            "Redução GEE (tCO2)": ("Redução", "orange")
+            "Geração (kWh)": ("Geração","red"),
+            "Receita (R$)" : ("Receita","green"),
+            "Redução GEE (tCO2)": ("Redução","orange")
         }
         for campo, (ttl, cor) in indicadores.items():
-            df_stack = df_filtrado.groupby(["Tempo", "Unidade"])[campo].sum().reset_index()
+            df_stack = df_filtrado.groupby(["Tempo","Unidade"])[campo].sum().reset_index()
             df_tot   = df_stack.groupby("Tempo")[campo].sum().reset_index()
             fig = go.Figure()
             for u in df_stack["Unidade"].unique():
@@ -242,18 +239,16 @@ else:
             fig.add_trace(go.Scatter(x=df_tot["Tempo"], y=df_tot[campo], name="Total",
                                      mode="lines+markers", line=dict(color=cor)))
             fig.update_layout(
-                title=ttl,
-                barmode="stack",
-                xaxis_title="Tempo",
-                yaxis_title=campo,
+                title=ttl, barmode="stack",
+                xaxis_title="Tempo", yaxis_title=campo,
                 template=plotly_template
             )
             st.plotly_chart(fig, use_container_width=True)
 
         st.markdown(
-            f"<h4 class='titulo' style='text-align:center; font-weight:bold;'>Comparativo Unidades</h4>",
+            "<h4 class='titulo' style='text-align:center; font-weight:bold;'>Comparativo Unidades</h4>",
             unsafe_allow_html=True
         )
-        df_uni_agg = df_filtrado.groupby("Unidade").agg({k: "sum" for k in indicadores}).reset_index()
+        df_uni_agg = df_filtrado.groupby("Unidade").agg({k:"sum" for k in indicadores}).reset_index()
         for k in indicadores:
             st.plotly_chart(px.bar(df_uni_agg, x="Unidade", y=k, title=k, template=plotly_template), use_container_width=True)
