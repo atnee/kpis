@@ -4,30 +4,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 import locale
 import numpy as np
+import statsmodels
 
-# Força fundo branco e fontes escuras
 st.set_page_config(layout="wide")
-st.markdown("""
-    <style>
-        .stApp, .block-container, .main, body {
-            background-color: #fff !important;
-            color: #111 !important;
-        }
-        h1, h2, h3, h4, h5, h6, p, label, span, div, .css-10trblm, .css-15tx938, .css-1d391kg, .css-1v0mbdj, .st-cw, .st-b3, .st-ae, .st-ag {
-            color: #111 !important;
-        }
-        .stMetricLabel, .stMetricValue, .st-emotion-cache-1xw8zd0, .st-emotion-cache-1gulkj5, .st-emotion-cache-1c7y2kd {
-            color: #111 !important;
-        }
-        .st-b6, .st-aq, .st-am, .st-as {
-            color: #111 !important;
-        }
-        .st-emotion-cache-1v0mbdj {color: #111 !important;}
-        /* Sidebar */
-        .css-1v0mbdj, .css-15tx938, .css-10trblm { color: #111 !important; }
-        h1, h2, h3, h4, h5, h6 { text-shadow: none !important; }
-    </style>
-    """, unsafe_allow_html=True)
 
 try:
     locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
@@ -77,8 +56,8 @@ cores = {
     "Urbano": "#059669"       # Verde
 }
 icons = {
-    "Rodoviário": "🚌 Rodoviário",
-    "Urbano": "🚍 Urbano"
+    "Rodoviário": "🚌 Ônibus Rodoviário",
+    "Urbano": "🚍 Ônibus Urbano"
 }
 
 aba_principal = st.sidebar.radio(
@@ -93,11 +72,11 @@ if aba_principal == "Mobilidade Elétrica":
     emoji = icons[sub_aba]
 
     st.markdown(
-        f"<h2 style='color:black; text-align:center; font-weight:bold;'>{emoji} — Mobilidade Elétrica</h2>", 
+        f"<h2 style='color:white; text-align:center; font-weight:bold;'>{emoji} — Mobilidade Elétrica</h2>", 
         unsafe_allow_html=True
     )
     st.markdown(
-        f"<h4 style='color:black; text-align:center; font-weight:bold;'>Relatório detalhado do ônibus {sub_aba}</h4>",
+        f"<h4 style='color:white; text-align:center; font-weight:bold;'>Relatório detalhado do ônibus {sub_aba}</h4>",
         unsafe_allow_html=True
     )
 
@@ -113,7 +92,7 @@ if aba_principal == "Mobilidade Elétrica":
 
     st.divider()
 
-    # KPIs secundários
+    # KPIs secundários (sem Redução Bruta de GEE)
     colA, colB = st.columns(2)
     with colA:
         economia = df_onibus["Economia"].sum()
@@ -122,7 +101,7 @@ if aba_principal == "Mobilidade Elétrica":
         colA.metric("Gasto em Energia Elétrica (R$)", format_real(energia))
     with colB:
         diesel = df_onibus["Gasto em Diesel"].sum()
-        colB.metric("Gasto em Diesel (R$)", format_real(diesel))
+        colB.metric("Estimativa do Gasto em Diesel (R$)", format_real(diesel))
         if df_onibus["Percentual de Redução"].notnull().any():
             percentual = df_onibus["Percentual de Redução"].dropna().mean()
             if percentual > 1:
@@ -137,46 +116,32 @@ if aba_principal == "Mobilidade Elétrica":
     st.divider()
 
     st.markdown(
-        "<h4 style='color:black; text-align:center; font-weight:bold;'>Gráficos Mensais</h4>",
+        "<h4 style='color:white; text-align:center; font-weight:bold;'>Gráficos Mensais</h4>",
         unsafe_allow_html=True
     )
-    fig1 = px.bar(df_onibus, x="Mês", y="kWh", title="Consumo de Energia Mensal (kWh)", color_discrete_sequence=[cor_tema], template="plotly_white")
-    fig2 = px.bar(df_onibus, x="Mês", y="km", title="Distância Percorrida por Mês (km)", color_discrete_sequence=[cor_tema], template="plotly_white")
-    fig3 = px.bar(df_onibus, x="Mês", y="Economia", title="Economia Mensal (R$)", color_discrete_sequence=[cor_tema], template="plotly_white")
+    fig1 = px.bar(df_onibus, x="Mês", y="kWh", title="Consumo de Energia Mensal (kWh)", color_discrete_sequence=[cor_tema])
+    fig2 = px.bar(df_onibus, x="Mês", y="km", title="Distância Percorrida por Mês (km)", color_discrete_sequence=[cor_tema])
+    fig3 = px.bar(df_onibus, x="Mês", y="Economia", title="Economia Mensal (R$)", color_discrete_sequence=[cor_tema])
     st.plotly_chart(fig1, use_container_width=True)
     st.plotly_chart(fig2, use_container_width=True)
     st.plotly_chart(fig3, use_container_width=True)
 
     st.divider()
     st.markdown(
-        "<h4 style='color:black; text-align:center; font-weight:bold;'>Correlação entre Consumo e Distância</h4>",
+        "<h4 style='color:white; text-align:center; font-weight:bold;'>Correlação entre Consumo e Distância</h4>",
         unsafe_allow_html=True
     )
     df_corr = df_onibus.dropna(subset=["kWh", "km"])
     if not df_corr.empty:
-        corr_val = df_corr["km"].corr(df_corr["kWh"])
-        corr_text = f"Coeficiente de correlação: {corr_val:.2f}"
+        trendline="ols",
         fig_corr = px.scatter(
             df_corr, x="km", y="kWh",
             # trendline="ols",
             title="Correlação: Consumo de Energia vs Distância Percorrida",
             labels={"km": "Distância Percorrida (km)", "kWh": "Consumo de Energia (kWh)"},
-            color_discrete_sequence=[cor_tema],
-            template="plotly_white"
-        )
-        fig_corr.add_annotation(
-            text=corr_text,
-            xref="paper", yref="paper",
-            x=0.95, y=0.98,
-            showarrow=False,
-            font=dict(size=16, color="black"),
-            align="right",
-            bgcolor="white",
-            bordercolor="black",
-            borderwidth=1
+            color_discrete_sequence=[cor_tema]
         )
         st.plotly_chart(fig_corr, use_container_width=True)
-        st.info("Para exibir a linha de tendência, instale o pacote 'statsmodels' e descomente a linha trendline='ols'.")
     else:
         st.info("Não há dados suficientes para plotar a correlação.")
 
@@ -188,7 +153,7 @@ elif aba_principal == "Sistemas Fotovoltaicos":
     df = carregar_dados_fotovoltaico()
     if aba_fv == "Sistemas Analisados":
         st.markdown(
-            "<h2 style='color:black; text-align:center; font-weight:bold;'>📊 Sistemas Fotovoltaicos - Sistemas Analisados</h2>",
+            "<h2 style='color:white; text-align:center; font-weight:bold;'>📊 Sistemas Fotovoltaicos - Sistemas Analisados</h2>",
             unsafe_allow_html=True
         )
         unidade = st.selectbox("Selecione a Unidade:", df['Unidade'].unique())
@@ -205,16 +170,16 @@ elif aba_principal == "Sistemas Fotovoltaicos":
         st.divider()
 
         st.markdown(
-            "<h4 style='color:black; text-align:center; font-weight:bold;'>Gráficos Mensais</h4>",
+            "<h4 style='color:white; text-align:center; font-weight:bold;'>Gráficos Mensais</h4>",
             unsafe_allow_html=True
         )
-        st.plotly_chart(px.line(df_u, x='Tempo', y='Geração (kWh)', title='Geração de Energia', template="plotly_white"), use_container_width=True)
-        st.plotly_chart(px.bar(df_u, x='Tempo', y='Receita (R$)', title='Receita por Mês', template="plotly_white"), use_container_width=True)
-        st.plotly_chart(px.area(df_u, x='Tempo', y='Redução GEE (tCO2)', title='Redução de GEE por Mês', template="plotly_white"), use_container_width=True)
+        st.plotly_chart(px.line(df_u, x='Tempo', y='Geração (kWh)', title='Geração de Energia'), use_container_width=True)
+        st.plotly_chart(px.bar(df_u, x='Tempo', y='Receita (R$)', title='Receita por Mês'), use_container_width=True)
+        st.plotly_chart(px.area(df_u, x='Tempo', y='Redução GEE (tCO2)', title='Redução de GEE por Mês'), use_container_width=True)
 
     elif aba_fv == "Geral":
         st.markdown(
-            "<h2 style='color:black; text-align:center; font-weight:bold;'>📈 Sistemas Fotovoltaicos - Geral</h2>",
+            "<h2 style='color:white; text-align:center; font-weight:bold;'>📈 Sistemas Fotovoltaicos - Geral</h2>",
             unsafe_allow_html=True
         )
         min_date = df["Tempo"].min().to_pydatetime()
@@ -229,7 +194,7 @@ elif aba_principal == "Sistemas Fotovoltaicos":
         st.divider()
 
         st.markdown(
-            "<h4 style='color:black; text-align:center; font-weight:bold;'>Gráficos Consolidados</h4>",
+            "<h4 style='color:white; text-align:center; font-weight:bold;'>Gráficos Consolidados</h4>",
             unsafe_allow_html=True
         )
         indicadores = {
@@ -267,7 +232,7 @@ elif aba_principal == "Sistemas Fotovoltaicos":
             )
             st.plotly_chart(fig, use_container_width=True)
         st.markdown(
-            "<h4 style='color:black; text-align:center; font-weight:bold;'>Comparativo entre Unidades</h4>",
+            "<h4 style='color:white; text-align:center; font-weight:bold;'>Comparativo entre Unidades</h4>",
             unsafe_allow_html=True
         )
         df_unidades = df_filtrado.groupby("Unidade").agg({
@@ -275,6 +240,6 @@ elif aba_principal == "Sistemas Fotovoltaicos":
             "Receita (R$)": "sum",
             "Redução GEE (tCO2)": "sum"
         }).reset_index()
-        st.plotly_chart(px.bar(df_unidades, x="Unidade", y="Geração (kWh)", title="Geração por Unidade", template="plotly_white"))
-        st.plotly_chart(px.bar(df_unidades, x="Unidade", y="Receita (R$)", title="Receita por Unidade", template="plotly_white"))
-        st.plotly_chart(px.bar(df_unidades, x="Unidade", y="Redução GEE (tCO2)", title="Redução GEE por Unidade", template="plotly_white"))
+        st.plotly_chart(px.bar(df_unidades, x="Unidade", y="Geração (kWh)", title="Geração por Unidade"))
+        st.plotly_chart(px.bar(df_unidades, x="Unidade", y="Receita (R$)", title="Receita por Unidade"))
+        st.plotly_chart(px.bar(df_unidades, x="Unidade", y="Redução GEE (tCO2)", title="Redução GEE por Unidade"))
