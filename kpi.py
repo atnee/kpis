@@ -5,13 +5,27 @@ import plotly.graph_objects as go
 import locale
 import numpy as np
 
-# Força fundo branco e textos escuros em toda a app
+# Força fundo branco e fontes escuras
 st.set_page_config(layout="wide")
 st.markdown("""
     <style>
-        .stApp {background-color: #fff;}
-        h1, h2, h3, h4, h5, h6, p, div, span, label, .css-10trblm, .css-15tx938, .css-1d391kg, .css-1v0mbdj {color: #111 !important;}
-        .block-container {color: #111 !important;}
+        .stApp, .block-container, .main, body {
+            background-color: #fff !important;
+            color: #111 !important;
+        }
+        h1, h2, h3, h4, h5, h6, p, label, span, div, .css-10trblm, .css-15tx938, .css-1d391kg, .css-1v0mbdj, .st-cw, .st-b3, .st-ae, .st-ag {
+            color: #111 !important;
+        }
+        .stMetricLabel, .stMetricValue, .st-emotion-cache-1xw8zd0, .st-emotion-cache-1gulkj5, .st-emotion-cache-1c7y2kd {
+            color: #111 !important;
+        }
+        .st-b6, .st-aq, .st-am, .st-as {
+            color: #111 !important;
+        }
+        .st-emotion-cache-1v0mbdj {color: #111 !important;}
+        /* Sidebar */
+        .css-1v0mbdj, .css-15tx938, .css-10trblm { color: #111 !important; }
+        h1, h2, h3, h4, h5, h6 { text-shadow: none !important; }
     </style>
     """, unsafe_allow_html=True)
 
