@@ -99,7 +99,7 @@ if aba_principal == "Mobilidade Elétrica":
         colA.metric("Economia Total (R$)", format_real(economia))
         colA.metric("Gasto em Energia Elétrica (R$)", format_real(energia))
     with colB:
-        diesel = df_onibus["Estimativa do Gasto em Diesel"].sum()
+        diesel = df_onibus["Gasto em Diesel"].sum()
         colB.metric("Estimativa do Gasto em Diesel (R$)", format_real(diesel))
         if df_onibus["Percentual de Redução"].notnull().any():
             percentual = df_onibus["Percentual de Redução"].dropna().mean()
