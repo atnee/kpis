@@ -4,7 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import locale
 import numpy as np
-import statsmodels  # necessário para trendline="ols"
+import statsmodels  
 
 # 1) Configuração da página
 st.set_page_config(layout="wide")
@@ -144,7 +144,7 @@ if relatorio == "Mobilidade Elétrica":
 
     # Correlação
     st.markdown(
-        "<h4 class='titulo' style='text-align:center; font-weight:bold;'>Correlação Consumo vs Distância</h4>",
+        "<h4 class='titulo' style='text-align:center; font-weight:bold;'>Gráfico de Dispersão e Tendência: Consumo vs Distância</h4>",
         unsafe_allow_html=True
     )
     df_corr = df_onibus.dropna(subset=["kWh", "km"])
