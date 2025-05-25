@@ -10,24 +10,20 @@ import statsmodels  # necessário se for usar trendline="ols"
 st.set_page_config(layout="wide")
 
 # 2) Injeção de CSS que aplica a classe 'titulo' conforme o tema nativo
-st.markdown("""
+st.markdown('''
 <style>
   /* Dark mode */
-  html[data-theme="dark"] .titulo {
-    color: white !important;
-  }
+  html[data-theme="dark"] .titulo { color: white !important; }
   /* Light mode */
-  html[data-theme="light"] .titulo {
-    color: black !important;
-  }
+  html[data-theme="light"] .titulo { color: black !important; }
 </style>
-""", unsafe_allow_html=True)
+''', unsafe_allow_html=True)
 
-# 3) Detecta tema para gráficos e anotação
+# 3) Detecta tema para gráficos e anotações
 base = (st.get_option("theme.base") or "light").lower()
 is_dark = base == "dark"
-plotly_template   = "plotly_dark"   if is_dark else "plotly_white"
-annotation_color  = "white"         if is_dark else "black"
+plotly_template  = "plotly_dark"   if is_dark else "plotly_white"
+annotation_color = "white"         if is_dark else "black"
 
 # 4) Locale pt_BR
 try:
@@ -44,7 +40,7 @@ def format_num(v, casas=2):
     s = f"{v:{fmt}}"
     return s.replace(",", "X").replace(".", ",").replace("X", ".")
 
-# 6) Carregamento de dados
+# 6) Caminho do Excel
 xlsx_path = "kpis_energia_por_unidade.xlsx"
 
 @st.cache_data
@@ -59,12 +55,13 @@ def carregar_dados_onibus(aba):
 def carregar_dados_fotovoltaico():
     df = pd.read_excel(xlsx_path)
     cols_gen = df.columns[1:-2].tolist()
-    col_tar = df.columns[-2]
-    col_gee = df.columns[-1]
+    col_tar  = df.columns[-2]
+    col_gee  = df.columns[-1]
     dfm = df.melt(
         id_vars=["Tempo", col_tar, col_gee],
         value_vars=cols_gen,
-        var_name="Unidade", value_name="Geração (kWh)"
+        var_name="Unidade",
+        value_name="Geração (kWh)"
     )
     dfm["Tempo"] = pd.to_datetime(dfm["Tempo"])
     dfm["Ano"]   = dfm["Tempo"].dt.year
@@ -79,7 +76,7 @@ def carregar_dados_fotovoltaico():
 
 # 7) Cores e ícones
 cores = {"Rodoviário": "#2563eb", "Urbano": "#059669"}
-icons = {"Rodoviário": "🚌 Ônibus Rodoviário", "Urbano": "🚍 Ônibus Urbano"}
+icons= {"Rodoviário": "🚌 Ônibus Rodoviário", "Urbano": "🚍 Ônibus Urbano"}
 
 # 8) Sidebar de navegação
 relatorio = st.sidebar.radio("Selecione Relatório:", ["Mobilidade Elétrica", "Sistemas Fotovoltaicos"])
@@ -90,7 +87,7 @@ if relatorio == "Mobilidade Elétrica":
     cor_tema   = cores[linha]
     emoji      = icons[linha]
 
-    # Títulos com classe 'titulo'
+    # Títulos
     st.markdown(
         f"<h2 class='titulo' style='text-align:center; font-weight:bold;'>{emoji} — Mobilidade Elétrica</h2>",
         unsafe_allow_html=True
@@ -135,8 +132,7 @@ if relatorio == "Mobilidade Elétrica":
     )
     for col, ttl in [("kWh", "Consumo"), ("km", "Distância"), ("Economia", "Economia")]:
         fig = px.bar(
-            df_onibus,
-            x="Mês", y=col,
+            df_onibus, x="Mês", y=col,
             title=f"{ttl} Mensal",
             color_discrete_sequence=[cor_tema],
             template=plotly_template
@@ -145,7 +141,7 @@ if relatorio == "Mobilidade Elétrica":
 
     st.divider()
 
-    # Correlação: scatter + trendline + coeficiente
+    # Correlação com trendline e anotação
     st.markdown(
         f"<h4 class='titulo' style='text-align:center; font-weight:bold;'>Correlação Consumo vs Distância</h4>",
         unsafe_allow_html=True
@@ -156,13 +152,12 @@ if relatorio == "Mobilidade Elétrica":
         corr_text = f"Coef. correlação: {corr:.2f}"
 
         fig_corr = px.scatter(
-            df_corr,
-            x="km", y="kWh",
+            df_corr, x="km", y="kWh",
             labels={"km": "Distância (km)", "kWh": "Consumo (kWh)"},
             color_discrete_sequence=[cor_tema],
             template=plotly_template,
             trendline="ols",
-            trendline_color_override=cor_tema,
+            trendline_color_override=cor_tema
         )
 
         fig_corr.add_annotation(
@@ -172,7 +167,7 @@ if relatorio == "Mobilidade Elétrica":
             showarrow=False,
             font=dict(color=annotation_color, size=14),
             align="left",
-            bgcolor="rgba(0,0,0,0.7)" if is_dark else "rgba(255,255,255,0.7)",
+            bgcolor=("rgba(0,0,0,0.7)" if is_dark else "rgba(255,255,255,0.7)")
         )
 
         st.plotly_chart(fig_corr, use_container_width=True)
