@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import locale
 import numpy as np
+import statsmodels
 
 st.set_page_config(layout="wide")
 
@@ -55,8 +56,8 @@ cores = {
     "Urbano": "#059669"       # Verde
 }
 icons = {
-    "Rodoviário": "🚌 Rodoviário",
-    "Urbano": "🚍 Urbano"
+    "Rodoviário": "🚌 Ônibus Rodoviário",
+    "Urbano": "🚍 Ônibus Urbano"
 }
 
 aba_principal = st.sidebar.radio(
@@ -132,7 +133,6 @@ if aba_principal == "Mobilidade Elétrica":
     )
     df_corr = df_onibus.dropna(subset=["kWh", "km"])
     if not df_corr.empty:
-        # Para mostrar a linha de tendência, instale statsmodels e descomente a linha abaixo:
         trendline="ols",
         fig_corr = px.scatter(
             df_corr, x="km", y="kWh",
@@ -142,7 +142,6 @@ if aba_principal == "Mobilidade Elétrica":
             color_discrete_sequence=[cor_tema]
         )
         st.plotly_chart(fig_corr, use_container_width=True)
-        st.info("Para exibir a linha de tendência, instale o pacote 'statsmodels' e descomente a linha trendline='ols'.")
     else:
         st.info("Não há dados suficientes para plotar a correlação.")
 
