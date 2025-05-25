@@ -7,7 +7,7 @@ import numpy as np
 
 st.set_page_config(layout="wide")
 
-# Locale seguro para pt_BR
+# Tenta definir o locale para pt_BR, mas formatação customizada será usada abaixo
 try:
     locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 except:
@@ -44,6 +44,13 @@ def carregar_dados_onibus(nome_aba):
         df["Data"] = pd.to_datetime(df["Data"])
     return df
 
+def format_real(valor):
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+def format_num(valor, casas=2):
+    formato = f":,.{casas}f"
+    return f"{valor{formato}}".replace(",", "X").replace(".", ",").replace("X", ".")
+
 cores = {
     "Rodoviário": "#2563eb",  # Azul
     "Urbano": "#059669"       # Verde
@@ -76,24 +83,33 @@ if aba_principal == "Mobilidade Elétrica":
 
     # KPIs principais
     col1, col2, col3 = st.columns(3)
-    col1.metric("Total km Rodados", locale.format_string("%.0f", df_onibus["km"].sum(), grouping=True))
-    col2.metric("Consumo Total (kWh)", locale.format_string("%.0f", df_onibus["kWh"].sum(), grouping=True))
-    col3.metric("Dias de Operação", locale.format_string("%.0f", df_onibus["Dias"].sum(), grouping=True))
+    col1.metric("Total km Rodados", format_num(df_onibus["km"].sum(), 0))
+    col2.metric("Consumo Total (kWh)", format_num(df_onibus["kWh"].sum(), 0))
+    col3.metric("Dias de Operação", format_num(df_onibus["Dias"].sum(), 0))
 
     st.divider()   # LINHA PADRÃO ENTRE OS BLOCOS
 
     # KPIs secundários (compactos)
     colA, colB = st.columns(2)
     with colA:
-        st.metric("Economia Total (R$)", "R$ " + locale.format_string("%.2f", df_onibus["Economia"].sum(), grouping=True))
-        st.metric("Gasto em Energia Elétrica (R$)", "R$ " + locale.format_string("%.2f", df_onibus["Gasto em Energia Elétrica"].sum(), grouping=True))
+        economia = df_onibus["Economia"].sum()
+        energia = df_onibus["Gasto em Energia Elétrica"].sum()
+        colA.metric("Economia Total (R$)", format_real(economia))
+        colA.metric("Gasto em Energia Elétrica (R$)", format_real(energia))
     with colB:
-        st.metric("Gasto em Diesel (R$)", "R$ " + locale.format_string("%.2f", df_onibus["Gasto em Diesel"].sum(), grouping=True))
+        diesel = df_onibus["Gasto em Diesel"].sum()
+        colB.metric("Gasto em Diesel (R$)", format_real(diesel))
         if df_onibus["Percentual de Redução"].notnull().any():
-            percentual = df_onibus["Percentual de Redução"].dropna().mean() * 100
-            st.metric("Percentual de Redução de GEE (%)", locale.format_string("%.2f", percentual, grouping=True) + "%")
+            percentual = df_onibus["Percentual de Redução"].dropna().mean()
+            # Ajuste para casos em que percentual está em fração ou já em %
+            if percentual > 1:
+                percentual_formatado = f"{percentual:,.2f}%"
+            else:
+                percentual_formatado = f"{percentual*100:,.2f}%"
+            percentual_formatado = percentual_formatado.replace(",", "X").replace(".", ",").replace("X", ".")
+            colB.metric("Percentual de Redução de GEE (%)", percentual_formatado)
         else:
-            st.metric("Percentual de Redução de GEE (%)", "N/A")
+            colB.metric("Percentual de Redução de GEE (%)", "N/A")
 
     st.divider()
 
@@ -142,11 +158,11 @@ elif aba_principal == "Sistemas Fotovoltaicos":
 
         # KPIs principais
         col1, col2 = st.columns(2)
-        col1.metric("Geração Total (kWh)", locale.format_string("%.0f", df_u['Geração (kWh)'].sum(), grouping=True))
-        col2.metric("Receita Total (R$)", "R$ " + locale.format_string("%.2f", df_u['Receita (R$)'].sum(), grouping=True))
+        col1.metric("Geração Total (kWh)", format_num(df_u['Geração (kWh)'].sum(), 0))
+        col2.metric("Receita Total (R$)", format_real(df_u['Receita (R$)'].sum()))
         col3, col4 = st.columns(2)
-        col3.metric("Tarifa Média (R$/kWh)", locale.format_string("%.4f", df_u['Tarifa (R$/kWh)'].mean(), grouping=True))
-        col4.metric("Redução GEE (tCO2)", locale.format_string("%.2f", df_u['Redução GEE (tCO2)'].sum(), grouping=True))
+        col3.metric("Tarifa Média (R$/kWh)", format_num(df_u['Tarifa (R$/kWh)'].mean(), 4))
+        col4.metric("Redução GEE (tCO2)", format_num(df_u['Redução GEE (tCO2)'].sum(), 2))
 
         st.divider()   # LINHA PADRÃO ENTRE OS BLOCOS
 
@@ -169,9 +185,9 @@ elif aba_principal == "Sistemas Fotovoltaicos":
         periodo = st.slider("Selecione o intervalo de tempo:", min_value=min_date, max_value=max_date, value=(min_date, max_date))
         df_filtrado = df[(df["Tempo"] >= pd.to_datetime(periodo[0])) & (df["Tempo"] <= pd.to_datetime(periodo[1]))]
         col1, col2, col3 = st.columns(3)
-        col1.metric("Geração Total (kWh)", locale.format_string("%.0f", df_filtrado['Geração (kWh)'].sum(), grouping=True))
-        col2.metric("Receita Total (R$)", "R$ " + locale.format_string("%.2f", df_filtrado['Receita (R$)'].sum(), grouping=True))
-        col3.metric("Redução GEE (tCO2)", locale.format_string("%.2f", df_filtrado['Redução GEE (tCO2)'].sum(), grouping=True))
+        col1.metric("Geração Total (kWh)", format_num(df_filtrado['Geração (kWh)'].sum(), 0))
+        col2.metric("Receita Total (R$)", format_real(df_filtrado['Receita (R$)'].sum()))
+        col3.metric("Redução GEE (tCO2)", format_num(df_filtrado['Redução GEE (tCO2)'].sum(), 2))
 
         st.divider()
 
