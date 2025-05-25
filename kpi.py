@@ -7,7 +7,7 @@ import numpy as np
 
 st.set_page_config(layout="wide")
 
-# Tenta definir o locale para pt_BR, mas formatação customizada será usada abaixo
+# Define locale pt_BR para outras funções, mas usamos funções customizadas para mostrar valores
 try:
     locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 except:
@@ -44,6 +44,7 @@ def carregar_dados_onibus(nome_aba):
         df["Data"] = pd.to_datetime(df["Data"])
     return df
 
+# Funções para formatar valores no padrão brasileiro
 def format_real(valor):
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
@@ -71,7 +72,6 @@ if aba_principal == "Mobilidade Elétrica":
     cor_tema = cores[sub_aba]
     emoji = icons[sub_aba]
 
-    # Título padrão branco centralizado
     st.markdown(
         f"<h2 style='color:white; text-align:center; font-weight:bold;'>{emoji} — Mobilidade Elétrica</h2>", 
         unsafe_allow_html=True
@@ -87,9 +87,9 @@ if aba_principal == "Mobilidade Elétrica":
     col2.metric("Consumo Total (kWh)", format_num(df_onibus["kWh"].sum(), 0))
     col3.metric("Dias de Operação", format_num(df_onibus["Dias"].sum(), 0))
 
-    st.divider()   # LINHA PADRÃO ENTRE OS BLOCOS
+    st.divider()
 
-    # KPIs secundários (compactos)
+    # KPIs secundários
     colA, colB = st.columns(2)
     with colA:
         economia = df_onibus["Economia"].sum()
@@ -99,9 +99,9 @@ if aba_principal == "Mobilidade Elétrica":
     with colB:
         diesel = df_onibus["Gasto em Diesel"].sum()
         colB.metric("Gasto em Diesel (R$)", format_real(diesel))
+        # Percentual de Redução de GEE
         if df_onibus["Percentual de Redução"].notnull().any():
             percentual = df_onibus["Percentual de Redução"].dropna().mean()
-            # Ajuste para casos em que percentual está em fração ou já em %
             if percentual > 1:
                 percentual_formatado = f"{percentual:,.2f}%"
             else:
@@ -110,6 +110,13 @@ if aba_principal == "Mobilidade Elétrica":
             colB.metric("Percentual de Redução de GEE (%)", percentual_formatado)
         else:
             colB.metric("Percentual de Redução de GEE (%)", "N/A")
+        # Valor bruto da redução de GEE
+        if "Redução GEE" in df_onibus.columns:
+            colB.metric("Redução Bruta de GEE (tCO2)", format_num(df_onibus["Redução GEE"].sum(), 2))
+        elif "Redução GEE (tCO2)" in df_onibus.columns:
+            colB.metric("Redução Bruta de GEE (tCO2)", format_num(df_onibus["Redução GEE (tCO2)"].sum(), 2))
+        else:
+            colB.metric("Redução Bruta de GEE (tCO2)", "N/A")
 
     st.divider()
 
@@ -131,14 +138,17 @@ if aba_principal == "Mobilidade Elétrica":
     )
     df_corr = df_onibus.dropna(subset=["kWh", "km"])
     if not df_corr.empty:
+        # Para mostrar a linha de tendência, instale statsmodels
+        # pip install statsmodels
         fig_corr = px.scatter(
             df_corr, x="km", y="kWh",
-            trendline="ols",
+            # trendline="ols",  # descomente esta linha caso tenha instalado statsmodels
             title="Correlação: Consumo de Energia vs Distância Percorrida",
             labels={"km": "Distância Percorrida (km)", "kWh": "Consumo de Energia (kWh)"},
             color_discrete_sequence=[cor_tema]
         )
         st.plotly_chart(fig_corr, use_container_width=True)
+        st.info("Para exibir a linha de tendência, instale o pacote 'statsmodels' e descomente a linha trendline='ols'.")
     else:
         st.info("Não há dados suficientes para plotar a correlação.")
 
@@ -164,9 +174,8 @@ elif aba_principal == "Sistemas Fotovoltaicos":
         col3.metric("Tarifa Média (R$/kWh)", format_num(df_u['Tarifa (R$/kWh)'].mean(), 4))
         col4.metric("Redução GEE (tCO2)", format_num(df_u['Redução GEE (tCO2)'].sum(), 2))
 
-        st.divider()   # LINHA PADRÃO ENTRE OS BLOCOS
+        st.divider()
 
-        # Gráficos Mensais
         st.markdown(
             "<h4 style='color:white; text-align:center; font-weight:bold;'>Gráficos Mensais</h4>",
             unsafe_allow_html=True
