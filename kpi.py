@@ -89,6 +89,14 @@ if relatorio == "Mobilidade Elétrica":
     cor_tema  = cores[linha]
     emoji     = icons[linha]
 
+    # Filtro de intervalo de datas
+    if "Data" in df_onibus.columns:
+        data_min = df_onibus["Data"].min().to_pydatetime()
+        data_max = df_onibus["Data"].max().to_pydatetime()
+        intervalo = st.slider("Intervalo de Tempo:", min_value=data_min, max_value=data_max, value=(data_min, data_max))
+        df_onibus = df_onibus[(df_onibus["Data"] >= pd.to_datetime(intervalo[0])) & (df_onibus["Data"] <= pd.to_datetime(intervalo[1]))]
+        df_onibus["Mês"] = df_onibus["Data"].dt.strftime("%b")
+
     st.markdown(
         f"<h2 class='titulo' style='text-align:center; font-weight:bold;'>{emoji} — Mobilidade Elétrica</h2>",
         unsafe_allow_html=True
@@ -175,6 +183,14 @@ else:
     modo = st.sidebar.radio("Sistemas Fotovoltaicos:", ["Sistemas Analisados", "Geral"])
     df_fv = carregar_dados_fotovoltaico()
 
+    # Paleta de cores padronizada por unidade
+    cores_unidades = {
+        unidade: cor for unidade, cor in zip(
+            sorted(df_fv["Unidade"].unique()),
+            px.colors.qualitative.Plotly
+        )
+    }
+
     if modo == "Sistemas Analisados":
         st.markdown(
             "<h2 class='titulo' style='text-align:center; font-weight:bold;'>📊 Sistemas Fotovoltaicos – Analisados</h2>",
@@ -196,9 +212,20 @@ else:
             "<h4 class='titulo' style='text-align:center; font-weight:bold;'>Gráficos Mensais</h4>",
             unsafe_allow_html=True
         )
-        st.plotly_chart(px.line(df_uni, x="Tempo", y="Geração (kWh)", template=plotly_template), use_container_width=True)
-        st.plotly_chart(px.bar(df_uni, x="Tempo", y="Receita (R$)", template=plotly_template), use_container_width=True)
-        st.plotly_chart(px.area(df_uni, x="Tempo", y="Redução GEE (tCO2)", template=plotly_template), use_container_width=True)
+        st.plotly_chart(px.line(
+            df_uni, x="Tempo", y="Geração (kWh)", color="Unidade",
+            template=plotly_template, color_discrete_map=cores_unidades
+        ), use_container_width=True)
+
+        st.plotly_chart(px.bar(
+            df_uni, x="Tempo", y="Receita (R$)", color="Unidade",
+            template=plotly_template, color_discrete_map=cores_unidades
+        ), use_container_width=True)
+
+        st.plotly_chart(px.area(
+            df_uni, x="Tempo", y="Redução GEE (tCO2)", color="Unidade",
+            template=plotly_template, color_discrete_map=cores_unidades
+        ), use_container_width=True)
 
     else:
         st.markdown(
@@ -235,7 +262,8 @@ else:
             fig = go.Figure()
             for u in df_stack["Unidade"].unique():
                 tmp = df_stack[df_stack["Unidade"] == u]
-                fig.add_trace(go.Bar(x=tmp["Tempo"], y=tmp[campo], name=u, marker=dict(opacity=0.85)))
+                fig.add_trace(go.Bar(x=tmp["Tempo"], y=tmp[campo], name=u,
+                                     marker=dict(opacity=0.85, color=cores_unidades.get(u, None))))
             fig.add_trace(go.Scatter(x=df_tot["Tempo"], y=df_tot[campo], name="Total",
                                      mode="lines+markers", line=dict(color=cor)))
             fig.update_layout(
@@ -251,4 +279,8 @@ else:
         )
         df_uni_agg = df_filtrado.groupby("Unidade").agg({k:"sum" for k in indicadores}).reset_index()
         for k in indicadores:
-            st.plotly_chart(px.bar(df_uni_agg, x="Unidade", y=k, title=k, template=plotly_template), use_container_width=True)
+            st.plotly_chart(px.bar(
+                df_uni_agg, x="Unidade", y=k, title=k,
+                template=plotly_template, color="Unidade",
+                color_discrete_map=cores_unidades
+            ), use_container_width=True)
