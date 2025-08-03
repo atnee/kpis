@@ -3,20 +3,41 @@ Painel interativo desenvolvido em Streamlit para visualização, análise e acom
 
 ## 🚀 Funcionalidades
 Visualização dinâmica dos principais KPIs por sistema, unidade ou consolidado.
+
 Comparativos anuais de geração, economia e sustentabilidade.
+
 Análise detalhada por unidade com gráficos, rankings e textos explicativos.
+
 Interface visual moderna, responsiva e adaptada à identidade visual do projeto.
 
 ## 📊 KPIs acompanhados
 Geração de Energia (kWh)
+
+
 Receita/Economia Gerada (R$)
+
+
 Redução de Gases de Efeito Estufa (tCO₂)
+
+
 Eficiência por Potência Instalada (kWh/kWp)
+
+
 Receita por Área (R$/m²)
+
+
 Ranking de desempenho anual
+
+
 Comparativo entre sistemas/unidades ao longo dos anos
+
+
 Radar de métricas normalizadas para comparação visual
+
+
 Gasto evitado com combustíveis fósseis (mobilidade elétrica)
+
+
 Distância rodada e consumo (mobilidade elétrica)
 
 ## 🎨 Visual e Padrão Institucional
@@ -27,4 +48,5 @@ Este painel é parte do projeto institucional de Gestão e Eficiência Energéti
 
 ## Desenvolvido por:
 Ayrton Lucas Lisboa do Nascimento
+
 Dr. Bruno Santana de Albuquerque
