@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import locale
+from utils import format_real, format_num, carregar_dados_onibus, carregar_dados_fotovoltaico, carregar_dados_sistema, gerar_pdf_kpis
 
 # Configuração da página
 st.set_page_config(layout="wide", page_title="Painel de KPIs — Projeto de Gestão e Eficiência Energética da UFPA")
@@ -97,23 +97,6 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 
-# Locale brasileiro
-try:
-    locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
-except:
-    locale.setlocale(locale.LC_ALL, '')
-
-def format_real(v):
-    if pd.isna(v):
-        return "R$ 0,00"
-    return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-def format_num(v, casas=2):
-    if pd.isna(v):
-        return "0"
-    s = f"{v:,.{casas}f}"
-    return s.replace(",", "X").replace(".", ",").replace("X", ".")
-
 # --- Barra lateral customizada ---
 st.sidebar.markdown('<div style="height:32px;"></div>', unsafe_allow_html=True)
 modulo = st.sidebar.radio(
@@ -129,69 +112,16 @@ modulo = st.sidebar.radio(
 st.sidebar.markdown('<div style="height:16px;"></div>', unsafe_allow_html=True)
 st.sidebar.image("logo-ceamazon-preta.png", use_container_width=True)
 
+# Caminho do arquivo Excel
 xlsx_path = "kpis_energia_por_unidade.xlsx"
 
-@st.cache_data
-def carregar_dados_onibus(tipo):
-    df = pd.read_excel(xlsx_path, sheet_name=tipo)
-    df.columns = df.columns.str.strip()
-    if "Tempo" in df.columns:
-        df["Tempo"] = pd.to_datetime(df["Tempo"], errors="coerce")
-        df["Ano"] = df["Tempo"].dt.year
-        df["MesNum"] = df["Tempo"].dt.month
-        df["Mês"] = df["Tempo"].dt.strftime("%b %Y")
-    return df
-
-@st.cache_data
-def carregar_dados_fotovoltaico():
-    df = pd.read_excel(xlsx_path, sheet_name=0)
-    df.columns = df.columns.str.strip()
-
-    col_tarifa = "Tarifa Fora Ponta (R$/kWh)"
-    col_gee = "Fator de Emissão de Gases do Efeito Estufa (tCO2/MWh)"
-
-    # pega todas as colunas de geração, exceto as Unnamed
-    colunas_geracao = [
-        col for col in df.columns
-        if col not in ["Tempo", col_tarifa, col_gee] and not col.startswith("Unnamed")
-    ]
-    dfm = df.melt(
-        id_vars=["Tempo", col_tarifa, col_gee],
-        value_vars=colunas_geracao,
-        var_name="Unidade", value_name="Geração (kWh)"
-    )
-    dfm["Tempo"] = pd.to_datetime(dfm["Tempo"], errors="coerce")
-    dfm["Ano"] = dfm["Tempo"].dt.year
-    dfm["MesNum"] = dfm["Tempo"].dt.month
-    dfm["Mês"] = dfm["Tempo"].dt.strftime("%b %Y")
-    dfm["Geração (kWh)"] = pd.to_numeric(dfm["Geração (kWh)"], errors="coerce")
-    dfm[col_tarifa] = pd.to_numeric(dfm[col_tarifa], errors="coerce")
-    dfm[col_gee] = pd.to_numeric(dfm[col_gee], errors="coerce")
-    dfm["Receita (R$)"] = dfm["Geração (kWh)"] * dfm[col_tarifa]
-    dfm["Redução GEE (tCO2)"] = (dfm["Geração (kWh)"] / 1000) * dfm[col_gee]
-    dfm.rename(columns={col_tarifa: "Tarifa (R$/kWh)"}, inplace=True)
-    return dfm
-# --- Cabeçalho do Painel ---
-st.markdown(
-    f"""<h1 style='text-align:center; color:{COR_TEXTO}; font-size:2.3em; margin-bottom:1em;'>
-    Painel de KPIs — Projeto de Gestão e Eficiência Energética da UFPA
-    </h1>""", unsafe_allow_html=True
-)
-# ------------------------------------
-#   Comparativo Anual (Fotovoltaico)
-# ------------------------------------
-@st.cache_data
-def carregar_dados_sistema():
-    df = pd.read_excel(xlsx_path, sheet_name="dados_sistema")
-    df.columns = df.columns.str.strip()
-    return df
 # -------------------------------
 #      Mobilidade Elétrica
 # -------------------------------
 if modulo.startswith("🚍"):
     st.write("")
     tipo_onibus = st.radio("Tipo de ônibus:", ["Rodoviário", "Urbano"], horizontal=True, key="tipo_onibus")
-    df = carregar_dados_onibus(tipo_onibus) 
+    df = carregar_dados_onibus(xlsx_path, tipo_onibus) 
 
     # Filtro de período
     if "Ano" in df.columns and "Tempo" in df.columns:
@@ -270,7 +200,7 @@ if modulo.startswith("🚍"):
 #   Sistemas Fotovoltaicos - GERAL
 # ------------------------------------
 elif modulo.startswith("🌞"):
-    df_fv = carregar_dados_fotovoltaico()
+    df_fv = carregar_dados_fotovoltaico(xlsx_path)
 
     st.markdown(
         f"""<h2 style='text-align:center; color:{COR_TEXTO}; font-size:1.55em; margin-bottom:1em;'>
@@ -312,6 +242,18 @@ elif modulo.startswith("🌞"):
                 <div class="kpi-value">🌱{format_num(df_filt["Redução GEE (tCO2)"].sum(), 2)}</div>
             </div>""", unsafe_allow_html=True)
     st.write("")
+    # Botão de download PDF dos KPIs
+    periodo_desc = f"{ano_sel}" if not filtro_mes else f"{ano_sel} - {mes_sel}"
+    if not df_filt.empty:
+        pdf_bytes = gerar_pdf_kpis(df_filt, periodo_desc)
+        st.download_button(
+            label="Baixar KPIs em PDF",
+            data=pdf_bytes,
+            file_name=f"KPIs_{periodo_desc}.pdf",
+            mime="application/pdf"
+        )
+    else:
+        st.info("Não há dados para gerar o PDF dos KPIs.")
     # --- Gráfico de barras empilhadas ---
     st.markdown(
         '<div style="font-weight:700;font-size:1.13em;color:#473228;text-align:center;">Geração por Unidade (kWh)</div>',
@@ -505,8 +447,8 @@ elif modulo.startswith("🌞"):
 #   Comparativo Anual (Fotovoltaico)
 # ------------------------------------
 elif modulo.startswith("📊"):
-    df_fv = carregar_dados_fotovoltaico()
-    df_meta = carregar_dados_sistema()
+    df_fv = carregar_dados_fotovoltaico(xlsx_path)
+    df_meta = carregar_dados_sistema(xlsx_path)
     df_meta.columns = df_meta.columns.str.strip()
     df_meta = df_meta.rename(columns={"Unnamed: 0": "Unidade"})
 
